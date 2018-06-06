@@ -9,10 +9,12 @@ By: Sage Weber-Shirk
 ```python
 from aide_design.play import *
 from aide_design import floc_model as floc
+from scipy.optimize import curve_fit    
 
-k = 0.23 # had been 0.18
+#k = 0.23 # had been 0.18
 coag = np.array([0.53, 1.06, 1.59, 2.11, 2.56]) * u.mg/u.L
 conc_humic_acid = np.array([0, 3, 6, 9, 12, 15] * u.mg/u.L)
+floc.HumicAcid.Density = 1520
 #dataset[0] is the 50NTU, dataset[1] is the 100NTU.
 #Within both subgroups, [0] is the pC.0, ranging evenly up to [5] which is the
 # pC.15
@@ -31,9 +33,9 @@ dataset = np.array([[[0.634, 0.729, 0.891, 1.062, 1.205],
                      [0.084, 0.157, 0.566, 1.084, 1.314]
                      ]
                     ])
-
 50*10**(-dataset[0])
-coagGraph = np.arange(1 * 10**-4, 25.1 * 10**-4, 1 * 10**-4) * u.kg/u.m**3 # Same as Mathcad sheet
+coagGraph = np.arange(1 * 10**-4, 26.1 * 10**-4, 1 * 10**-4) * u.kg/u.m**3 # Same as Mathcad sheet
+coag_graph = np.linspace(5*10**-5,26*10**-4,num=100)*u.kg/u.m**3
 enerDis = 4.833 * u.mW/u.kg # Same as Mathcad sheet
 temperature = 25 * u.degC # Same as Mathcad sheet
 resTime = 302 * u.s # Same as Mathcad sheet
@@ -60,9 +62,83 @@ def pc_viscous(EnergyDis, Temp, Time, DiamTube,
                        )
             )
 ```
+# Fitting Humic Acid Diameter and $k$
+```python
+
+# Fitting k
+def N_viscous (ConcClay,ConcAl,coag,material,DiamTube,RatioHeightDiameter,Time,EnergyDis,Temp):
+    x = floc.alpha(DiamTube, ConcClay, ConcAl, 0*u.mg/u.L, floc.HumicAcid, coag, material, RatioHeightDiameter)*Time*(np.sqrt(EnergyDis/pc.viscosity_kinematic(Temp))).to(1/u.s)*floc.frac_vol_floc_initial(ConcAl, ConcClay, coag, material)**(2/3)
+    return x.to(u.dimensionless)
+
+def viscous_fit(N,k):
+    return 1.5*np.log10(2.0/3.0*np.pi*k*N*(6.0/np.pi)**(2.0/3.0) + 1)
+
+N_fit50 = N_viscous(50*u.NTU,coag,floc.PACl,floc.Clay,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
+N_fit100 = N_viscous(100*u.NTU,coag,floc.PACl,floc.Clay,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
+N_graph = N_viscous(50*u.NTU,coag_graph,floc.PACl,floc.Clay,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
+## Fit k for combinded 0 mg/L HA data
+k, kvar= curve_fit(viscous_fit,np.concatenate([N_fit50,N_fit100]),np.concatenate([dataset[0][0],dataset[1][0]]))              
+k
+## verify fit
+N_graph50  = N_viscous(50*u.NTU,coag_graph,floc.PACl,floc.Clay,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
+N_graph100  = N_viscous(100*u.NTU,coag_graph,floc.PACl,floc.Clay,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
+plt.plot(np.concatenate([N_fit50,N_fit100]),np.concatenate([dataset[0][0],dataset[1][0]]),'x')
+N_plot = np.linspace(2.5,16,num=100)
+plt.plot(N_plot,viscous_fit(N_plot,k),'k')
+plt.show()
+k
+## Fitting d_HA
+data = np.ones((3,len(np.where(dataset[0][0]>0.5)[0])))
+# 0th row is coagulant 1st is humic acid, 2nd is influent turbidity
+@u.wraps(u.dimensionless,[u.mg/u.L;u.mg/u.L;u.NTU],False)
+def pc_fit_k_dHA(data,dHA):
+    G_Coag = floc.gamma_coag(data[2],data[0],floc.PACl,floc.Clay,tubeDiam,floc.RATIO_HEIGHT_DIAM)
+    G_HA = np.zeros(len(data[0]))
+    pC = G_HA    
+    for i in range(0,len(data[0])):
+        G_HA[i] = min(((data[1][i] / floc.conc_precipitate(data[0][i], floc.PACl).magnitude)
+                * (floc.PACl.Density / floc.HumicAcid.Density)
+                * (floc.PACl.Diameter / (4 * dHA))
+                ),
+               1*u.nm)
+
+        pC[i] = ((3/2)
+            * np.log10((2/3) * np.pi * k * resTime
+                       * np.sqrt(enerDis.to(u.m**2/u.s**3) / (pc.viscosity_kinematic(temperature).magnitude*u.m**2/u.s)
+                                 )
+                       * (
+                       2*(1-G_Coag[i])*(G_Coag[i]*(1-G_HA[i])) +
+                       (G_Coag[i]*(1-G_HA[i]))**2 +
+                       2*(G_Coag[i]*(1-G_HA[i]))*(G_HA[i]*G_Coag[i])
+                       )
+                       * (np.pi/6)**(2/3)
+                       * (floc.Clay.Diameter
+                       / floc.sep_dist_clay(data[2][i], floc.Clay)
+                       .magnitude)
+                       ** 2
+                       + 1
+                       )
+            )
+        return pC    
+pc.viscosity_kinematic(temperature).magnitude
+# 50 NTU Data            
+dHA_50 = np.zeros(6)
+dHAvar_50 = dHA_50
+for i in range(0,6):            
+   data = np.ones((3,len(np.where(dataset[0][i]>0.5)[0])))
+   data[0] = coag[np.where(dataset[0][i]>0.5)]
+   data[1] = data[1]*conc_humic_acid[i]
+   data[2] = data[2]*50*u.NTU
+   pC = dataset[0][i][np.where(dataset[0][i]>0.5)]
+   dHA_50[i],dHAvar_50[i] = curve_fit(pc_fit_k_dHA,data,pC)
+dHA_50   
+data
+pc_fit_k_dHA(data,40*u.nm)
+```
 #Begin graphing the 50NTU datasets
 ```python
 plt.clf()
+plt.close('all')
 
 plt.subplot(121)
 plt.title('50 NTU Graph')
@@ -75,12 +151,12 @@ plt.plot(coag, dataset[0][0], 'r.', coag, dataset[0][1], 'b.', coag, dataset[0][
 #I wish there was a cleaner way to assign these but I can't think
 # of what it would be.
 # Until floc_model is fixed, use locally defined pc_viscous
-line0mg50 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 0 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k, floc.RATIO_HEIGHT_DIAM)
-line3mg50 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 3 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k, floc.RATIO_HEIGHT_DIAM)
-line6mg50 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 6 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k, floc.RATIO_HEIGHT_DIAM)
-line9mg50 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 9 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k, floc.RATIO_HEIGHT_DIAM)
-line12mg50 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 12 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k, floc.RATIO_HEIGHT_DIAM)
-line15mg50 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 15 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k, floc.RATIO_HEIGHT_DIAM)
+line0mg50 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 0 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k50, floc.RATIO_HEIGHT_DIAM)
+line3mg50 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 3 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k50, floc.RATIO_HEIGHT_DIAM)
+line6mg50 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 6 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k50, floc.RATIO_HEIGHT_DIAM)
+line9mg50 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 9 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k50, floc.RATIO_HEIGHT_DIAM)
+line12mg50 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 12 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k50, floc.RATIO_HEIGHT_DIAM)
+line15mg50 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 15 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k50, floc.RATIO_HEIGHT_DIAM)
 
 x = coagGraph.to(u.mg/u.L)
 plt.plot(x, line0mg50, 'r', x, line3mg50, 'b', x, line6mg50, 'g',
@@ -97,12 +173,12 @@ plt.xlabel('coagulant dosage (mg/L)')
 plt.plot(coag, dataset[1][0], 'r.', coag, dataset[1][1], 'b.', coag, dataset[1][2], 'g.',
          coag, dataset[1][3], 'm.', coag, dataset[1][4], 'c.', coag, dataset[1][5], 'y.')
 
-line0mg100 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coagGraph, 0 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k, floc.RATIO_HEIGHT_DIAM)
-line3mg100 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coagGraph, 3 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k, floc.RATIO_HEIGHT_DIAM)
-line6mg100 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coagGraph, 6 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k, floc.RATIO_HEIGHT_DIAM)
-line9mg100 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coagGraph, 9 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k, floc.RATIO_HEIGHT_DIAM)
-line12mg100 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coagGraph, 12 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k, floc.RATIO_HEIGHT_DIAM)
-line15mg100 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coagGraph, 15 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k, floc.RATIO_HEIGHT_DIAM)
+line0mg100 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coagGraph, 0 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k100, floc.RATIO_HEIGHT_DIAM)
+line3mg100 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coagGraph, 3 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k100, floc.RATIO_HEIGHT_DIAM)
+line6mg100 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coagGraph, 6 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k100, floc.RATIO_HEIGHT_DIAM)
+line9mg100 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coagGraph, 9 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k100, floc.RATIO_HEIGHT_DIAM)
+line12mg100 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coagGraph, 12 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k100, floc.RATIO_HEIGHT_DIAM)
+line15mg100 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coagGraph, 15 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k100, floc.RATIO_HEIGHT_DIAM)
 
 x = coagGraph.to(u.mg/u.L)
 plt.plot(x, line0mg100, 'r', x, line3mg100, 'b', x, line6mg100, 'g',
@@ -112,13 +188,13 @@ plt.plot(x, line0mg100, 'r', x, line3mg100, 'b', x, line6mg100, 'g',
 
 #And now we display our graph!
 ```python
-nua = 15*u.mm**2/u.s
-EDR1 = 1.5*u.m**2/u.s**3
-EDR2 = 6*u.m**2/u.s**3
-eta1 = (nua**3/EDR1)**(1/4)
-eta2 = (nua**3/EDR2)**(1/4)
-eta1.to(u.mm)
-eta2.to(u.mm)
+#nua = 15*u.mm**2/u.s
+#EDR1 = 1.5*u.m**2/u.s**3
+#EDR2 = 6*u.m**2/u.s**3
+#eta1 = (nua**3/EDR1)**(1/4)
+#eta2 = (nua**3/EDR2)**(1/4)
+#eta1.to(u.mm)
+#eta2.to(u.mm)
 plt.savefig('Yingda.png',format='png')
 plt.show()
 ```
@@ -140,38 +216,55 @@ plt.rcParams.update(params)
 ## 50 NTU Data
 ```python
 # Create function for old model (no HA)
-def pc_viscous(EnergyDis, Temp, Time, DiamTube,
-               ConcClay, ConcAl, ConcNatOrgMat, NatOrgMat,
-               coag, material, FittingParam, RatioHeightDiameter):
-    return ((3/2)
-            * np.log10((2/3) * np.pi * FittingParam * Time
-                       * np.sqrt(EnergyDis
-                                 / (pc.viscosity_kinematic(Temp).magnitude)
-                                 )
-                       * floc.alpha(DiamTube, ConcClay, ConcAl, ConcNatOrgMat,
-                               NatOrgMat, coag, material, RatioHeightDiameter)
-                       * floc.frac_vol_floc_initial(ConcAl,ConcClay,coag,material)**(2/3)
-                       + 1
-                       )
-            )
+#@u.wraps(None, [u.W/u.kg, u.degK, u.s, u.m,
+#                u.kg/u.m**3, u.kg/u.m**3,
+#                None, None, u.dimensionless, u.dimensionless], False)
+#def pc_viscous_old(EnergyDis, Temp, Time, DiamTube,
+#               ConcClay, ConcAl, coag, material,
+#               FittingParam, RatioHeightDiameter):
+#    return ((3/2)
+#            * np.log10((2/3) * np.pi * FittingParam * Time
+#                       * np.sqrt(EnergyDis
+#                                 / (pc.viscosity_kinematic(Temp).magnitude)
+#                                 )
+#                       * (2*floc.gamma_coag(ConcClay,ConcAl,coag,material,DiamTube,RatioHeightDiameter)-floc.gamma_coag(ConcClay,ConcAl,coag,material,DiamTube,RatioHeightDiameter)**2)
+#                       * floc.frac_vol_floc_initial(ConcAl,ConcClay,coag,material)**(2/3)
+#                       + 1
+#                       )
+#            )
+
+def N_old(ConcClay,ConcAl,coag,material,DiamTube,RatioHeightDiameter,Time,EnergyDis,Temp):
+	x = (2*floc.gamma_coag(ConcClay, ConcAl, coag, material, DiamTube, RatioHeightDiameter)-floc.gamma_coag(ConcClay, ConcAl, coag, material, DiamTube, RatioHeightDiameter)**2)*Time*(np.sqrt(EnergyDis/pc.viscosity_kinematic(Temp))).to(1/u.s)*floc.frac_vol_floc_initial(ConcAl, ConcClay, coag, material)**(2/3)
+	return x.to(u.dimensionless)
+
+N_fit_old = N_old(50*u.NTU,coag,floc.PACl,floc.Clay,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
+N_graph_old = N_old(50*u.NTU,coag_graph,floc.PACl,floc.Clay,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
+
+def viscous_fit(N,k):
+    return 1.5*np.log10(2.0/3.0*np.pi*k*N*(6.0/np.pi)**(2.0/3.0) + 1)
+
+k_old, kvar_old = curve_fit(viscous_fit,N_fit_old,dataset[0][0])              
 
 plt.clf()
 plt.close('all')
-plt.figure(4)
-plt.plot(coagGraph,)
+plt.figure(0)
 plt.plot(coag,dataset[0][0],'--rx', label=r'0 mg/L HA')
 plt.plot(coag,dataset[0][1],'--b+', label=r'3 mg/L HA')
 plt.plot(coag,dataset[0][2],'--gs', markerfacecolor='none', label=r'6 mg/L HA')
 plt.plot(coag,dataset[0][3],'--mD', markerfacecolor='none', label=r'9 mg/L HA')
 plt.plot(coag,dataset[0][4],'--co', markerfacecolor='none', label=r'12 mg/L HA')
 plt.plot(coag,dataset[0][5],'--^',c='xkcd:brown', markerfacecolor='none', label=r'12 mg/L HA')
+plt.plot(coag_graph.to(u.mg/u.L)[19:],viscous_fit(N_graph_old,k_old)[19:],'k',label=r'Pennock et al. (2018)')
+#plt.plot(x[4:],pc_viscous_old(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph[4:], floc.PACl, floc.Clay, k50, floc.RATIO_HEIGHT_DIAM),'k',label=r'Pennock et al. (2018)')
 plt.xlabel(r'Coagulant Dose (mg/L)')
 plt.ylabel(r'$\mathrm{p}C^{*}$')
-plt.axis([0, 3, 0, 1.5])
+plt.axis([0, 3, 0, 1.7])
 plt.legend(loc='upper left',ncol=2,borderpad=0.1,handletextpad=0.1,labelspacing=0,columnspacing=0.1,edgecolor='inherit')
 plt.tight_layout()
-plt.savefig('DuFig4.png',format='png')
-plt.savefig('DuFig4.eps',format='eps')
+dataset[0][0]
+plt.savefig('50NTU.png',format='png')
+plt.savefig('50NTU.eps',format='eps')
+plt.show()
 ```
 
 ## Figure 5

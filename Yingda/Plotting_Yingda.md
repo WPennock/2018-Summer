@@ -10,6 +10,9 @@ By: Sage Weber-Shirk
 from aide_design.play import *
 from aide_design import floc_model as floc
 from scipy.optimize import curve_fit    
+import pdb
+k
+u.NTU = 100/68*u.mg/u.L
 
 #k = 0.23 # had been 0.18
 coag = np.array([0.53, 1.06, 1.59, 2.11, 2.56]) * u.mg/u.L
@@ -33,7 +36,7 @@ dataset = np.array([[[0.634, 0.729, 0.891, 1.062, 1.205],
                      [0.084, 0.157, 0.566, 1.084, 1.314]
                      ]
                     ])
-50*10**(-dataset[0])
+dataset_pC = 50*10**(-dataset[0])
 coagGraph = np.arange(1 * 10**-4, 26.1 * 10**-4, 1 * 10**-4) * u.kg/u.m**3 # Same as Mathcad sheet
 coag_graph = np.linspace(5*10**-5,26*10**-4,num=100)*u.kg/u.m**3
 enerDis = 4.833 * u.mW/u.kg # Same as Mathcad sheet
@@ -88,53 +91,79 @@ plt.plot(N_plot,viscous_fit(N_plot,k),'k')
 plt.show()
 k
 ## Fitting d_HA
-data = np.ones((3,len(np.where(dataset[0][0]>0.5)[0])))
-# 0th row is coagulant 1st is humic acid, 2nd is influent turbidity
-@u.wraps(u.dimensionless,[u.mg/u.L;u.mg/u.L;u.NTU],False)
-def pc_fit_k_dHA(data,dHA):
-    G_Coag = floc.gamma_coag(data[2],data[0],floc.PACl,floc.Clay,tubeDiam,floc.RATIO_HEIGHT_DIAM)
-    G_HA = np.zeros(len(data[0]))
-    pC = G_HA    
-    for i in range(0,len(data[0])):
-        G_HA[i] = min(((data[1][i] / floc.conc_precipitate(data[0][i], floc.PACl).magnitude)
-                * (floc.PACl.Density / floc.HumicAcid.Density)
-                * (floc.PACl.Diameter / (4 * dHA))
-                ),
-               1*u.nm)
 
-        pC[i] = ((3/2)
-            * np.log10((2/3) * np.pi * k * resTime
-                       * np.sqrt(enerDis.to(u.m**2/u.s**3) / (pc.viscosity_kinematic(temperature).magnitude*u.m**2/u.s)
-                                 )
-                       * (
-                       2*(1-G_Coag[i])*(G_Coag[i]*(1-G_HA[i])) +
-                       (G_Coag[i]*(1-G_HA[i]))**2 +
-                       2*(G_Coag[i]*(1-G_HA[i]))*(G_HA[i]*G_Coag[i])
-                       )
-                       * (np.pi/6)**(2/3)
-                       * (floc.Clay.Diameter
-                       / floc.sep_dist_clay(data[2][i], floc.Clay)
-                       .magnitude)
-                       ** 2
-                       + 1
-                       )
-            )
-        return pC    
-pc.viscosity_kinematic(temperature).magnitude
+# @u.wraps(u.dimensionless,[u.mg/u.L,u.mg/u.L,u.NTU],False)
+def pc_fit_dHA(data,dHA):
+    '''# For data, 0th row is coagulant 1st is humic acid, 2nd is influent turbidity'''
+    G_Coag = floc.gamma_coag(data[2]*u.mg/u.L,data[0]*u.mg/u.L,floc.PACl,floc.Clay,tubeDiam,floc.RATIO_HEIGHT_DIAM)
+    G_HA = np.minimum(((data[1]*u.mg/u.L / floc.conc_precipitate(data[0]*u.mg/u.L, floc.PACl)) * (floc.PACl.Density / floc.HumicAcid.Density) * (floc.PACl.Diameter*u.m / (4 * dHA*u.nm)) ).to(u.dimensionless), np.ones(len(data[0])))
+    pdb.set_trace()
+    pred = np.zeros(len(data[0]))
+    for i in range(0,len(data[0])):
+        pred[i] = ((3/2) * np.log10((2/3) * np.pi * k * resTime * np.sqrt(enerDis.to(u.m**2/u.s**3) / (pc.viscosity_kinematic(temperature)) ) * ( 2*(1-G_Coag[i])*(G_Coag[i]*(1-G_HA[i])) + (G_Coag[i]*(1-G_HA[i]))**2 + 2*(G_Coag[i]*(1-G_HA[i]))*(G_HA[i]*G_Coag[i]) ) * (np.pi/6)**(2/3) * (floc.Clay.Diameter*u.m / floc.sep_dist_clay(data[2][i], floc.Clay) ) ** 2 + 1 ) )
+    return pred    
 # 50 NTU Data            
 dHA_50 = np.zeros(6)
 dHAvar_50 = dHA_50
 for i in range(0,6):            
-   data = np.ones((3,len(np.where(dataset[0][i]>0.5)[0])))
-   data[0] = coag[np.where(dataset[0][i]>0.5)]
+   data = np.ones((3,len(np.where(dataset[0][i]>0.1)[0])))
+   data[0] = coag[np.where(dataset[0][i]>0.1)]
    data[1] = data[1]*conc_humic_acid[i]
    data[2] = data[2]*50*u.NTU
+   pC = dataset[0][i][np.where(dataset[0][i]>0.1)]
+   dHA_50[i],dHAvar_50[i] = curve_fit(pc_fit_dHA,data,pC,p0=500)
+for i in range(0,6):
+    plt.plot(coag,dataset[0][i],'x')
+    data = np.ones((3,100))
+    data[0] = coag_graph
+    data[1] = data[1]*conc_humic_acid[i]
+    data[2] = data[2]*50*u.NTU
+    plt.plot(coag_graph.to(u.mg/u.L),pc_fit_dHA(data,1000),'--')
+    plt.plot(coag_graph.to(u.mg/u.L),pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coag_graph, conc_humic_acid[i]*u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, k, floc.RATIO_HEIGHT_DIAM))    
+plt.show()    
+
+dHA_50
+# def pc_fit_k_dHA(data,k,dHA):
+#     '''# For data, 0th row is coagulant 1st is humic acid, 2nd is influent turbidity'''
+#     G_Coag = floc.gamma_coag(data[2]*u.mg/u.L,data[0]*u.mg/u.L,floc.PACl,floc.Clay,tubeDiam,floc.RATIO_HEIGHT_DIAM)
+#     G_HA = np.minimum(((data[1]*u.mg/u.L / floc.conc_precipitate(data[0]*u.mg/u.L, floc.PACl))
+#                 * (floc.PACl.Density / floc.HumicAcid.Density)
+#                 * (floc.PACl.Diameter*u.m / (4 * dHA*u.nm))
+#                 ).to(u.dimensionless),
+#                np.ones(len(data[0])))
+#     pred = np.zeros(len(data[0]))
+#     for i in range(0,len(data[0])):
+#         pred[i] = ((3/2) * np.log10((2/3) * np.pi * k * resTime * np.sqrt(enerDis.to(u.m**2/u.s**3) / (pc.viscosity_kinematic(temperature)) ) * ( 2*(1-G_Coag[i])*(G_Coag[i]*(1-G_HA[i])) + (G_Coag[i]*(1-G_HA[i]))**2 + 2*(G_Coag[i]*(1-G_HA[i]))*(G_HA[i]*G_Coag[i]) ) * (np.pi/6)**(2/3) * (floc.Clay.Diameter*u.m / floc.sep_dist_clay(data[2][i], floc.Clay) ) ** 2 + 1 ) )
+#     return pred    
+#
+# fit_50 = np.zeros([6,1])
+# fitvar_50 = fit_50
+#
+# for i in range(0,6):            
+#    data = np.ones((3,len(np.where(dataset[0][i]>0.5)[0])))
+#    data[0] = coag[np.where(dataset[0][i]>0.5)]
+#    data[1] = data[1]*conc_humic_acid[i]
+#    data[2] = data[2]*50*u.NTU
+#    pC = dataset[0][i][np.where(dataset[0][i]>0.5)]
+#    fit_50[i],fitvar_50[i] = curve_fit(pc_fit_k_dHA,data,pC)
+# fit, fitvar = curve_fit(pc_fit_k_dHA,data,pC)
+# fit
+# pc_fit_k_dHA(data,0.0691)
+
+# 100 NTU Data            
+dHA_100 = np.zeros(6)
+dHAvar_100 = dHA_100
+for i in range(0,6):            
+   data = np.ones((3,len(np.where(dataset[1][i]>0.5)[0])))
+   data[0] = coag[np.where(dataset[1][i]>0.5)]
+   data[1] = data[1]*conc_humic_acid[i]
+   data[2] = data[2]*100*u.NTU
    pC = dataset[0][i][np.where(dataset[0][i]>0.5)]
-   dHA_50[i],dHAvar_50[i] = curve_fit(pc_fit_k_dHA,data,pC)
-dHA_50   
+   dHA_50[i],dHAvar_50[i] = curve_fit(pc_fit_dHA,data,pC,p0=100)
+dHA_100
 data
-pc_fit_k_dHA(data,40*u.nm)
 ```
+
 #Begin graphing the 50NTU datasets
 ```python
 plt.clf()

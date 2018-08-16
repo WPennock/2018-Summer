@@ -11,6 +11,7 @@ Q = 6*u.mL/u.s
 ID = 9.52*u.mm
 A = np.pi*ID**2/4
 V = (Q/A).to(u.m/u.s)
+V.to(u.mm/u.s)
 R_c = 15*u.cm
 Temperature = 25*u.degC
 nu = pc.viscosity_kinematic(Temperature)
@@ -59,6 +60,17 @@ EDR_Coil_C = (hf_Coil_C*u.g_0/T).to(u.mW/u.kg)
 EDR_Coil_C
 G_Calc_C = np.sqrt(EDR_Coil_C/nu)
 G_Calc_C.to(1/u.s)
+```
+### Calculation in Paper
+```python
+hf_Straight = (32*nu*L*V/(u.g_0*ID**2))
+hf_Straight.to(u.m)
+EDR_Straight = u.g_0*hf_Straight/T
+EDR_Straight.to(u.mW/u.kg)
+G_Straight = np.sqrt(EDR_Straight/nu)
+G_Straight.to(1/u.s)
+G_Coil_Paper = G_Straight*np.sqrt(1+0.033*np.log10(De)**4)
+G_Coil_Paper.to(1/u.s)
 ```
 
 ## Analyze Goodness of Extracted 100 NTU Points

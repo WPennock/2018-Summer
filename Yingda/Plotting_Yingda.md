@@ -649,7 +649,6 @@ def Eff(pC,Inf):
     return Inf*10**(-pC)    
 
 Inf = np.array([50,100])*u.NTU
-
 # 50 NTU values
 N_50_0 = CPvx(50*u.NTU,0*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
 N_50_3 = CPvx(50*u.NTU,3*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
@@ -671,7 +670,7 @@ plt.clf()
 plt.close('all')
 plt.figure()
 #50 NTU Model
-plt.loglog(L.to(u.NTU),CPvy(L,50*u.NTU).to(u.dimensionless),label=r'$C_0=$ 50 NTU Model')
+plt.loglog(L,CPvy(L,50*u.NTU),label=r'$C_0=$ 50 NTU Model')
 #50 NTU Data
 plt.loglog(Eff(dataset[0][0],Inf[0]),N_50_0,'rx', label=r'50 NTU, 0 mg/L HA Data')
 plt.loglog(Eff(dataset2[0][0],Inf[0]),N_50_0,'rx')
@@ -686,7 +685,7 @@ plt.loglog(Eff(dataset2[0][4],Inf[0]),N_50_12,'co', markerfacecolor='none')
 plt.loglog(Eff(dataset[0][5],Inf[0]),N_50_15,'^',c='xkcd:brown', markerfacecolor='none', label=r'50 NTU, 15 mg/L HA Data')
 plt.loglog(Eff(dataset2[0][5],Inf[0]),N_50_15,'^',c='xkcd:brown', markerfacecolor='none')
 # 100 NTU Model
-plt.loglog(L.to(u.NTU),CPvy(L,100*u.NTU).to(u.dimensionless),label=r'$C_0=$ 100 NTU Model')
+plt.loglog(L,CPvy(L,100*u.NTU),label=r'$C_0=$ 100 NTU Model')
 # 100 NTU Data
 plt.loglog(Eff(dataset[1][0],Inf[1]),N_100_0,'kx', label=r'100 NTU, 0 mg/L HA Data' )
 plt.loglog(Eff(dataset2[1][0],Inf[1]),N_100_0,'kx')

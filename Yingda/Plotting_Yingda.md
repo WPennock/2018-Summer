@@ -8,8 +8,7 @@ from aide_design import floc_model as floc
 from scipy.optimize import curve_fit    
 import pdb
 
-u.NTU = 100/68*u.mg/u.L
-
+u.define('NTU = 100/68*mg/L')
 #k = 0.23 # had been 0.18
 coag = np.array([0.53, 1.06, 1.59, 2.11, 2.56]) * u.mg/u.L
 conc_humic_acid = np.array([0, 3, 6, 9, 12, 15]) * u.mg/u.L
@@ -35,7 +34,7 @@ dataset = np.array([[[0.634, 0.729, 0.891, 1.062, 1.205],
 dataset[0][0]/dataset[1][0]
 dataset_conc = 50*10**(-dataset[0])
 dataset_conc
-dataset2_conc = np.array([[12.44, 8.13, 5.86, 4.25, 3.24], # yingda's du.Licates
+dataset2_conc = np.array([[12.44, 8.13, 5.86, 4.25, 3.24], # yingda's dupLicates
                           [14.65, 8.75, 5.97, 4.48, 3.25],
                           [37.41, 14.65, 7.69, 4.63, 3.93],
                           [39.63, 26.98, 8.51, 4.91, 4.04],
@@ -61,7 +60,7 @@ dataset2 = np.array([[[ 0.60414962, 0.78887946, 0.93107239, 1.07058107, 1.188424
                       ])
 
 
-coagGraph = np.arange(1 * 10**-4, 26.1 * 10**-4, 1 * 10**-4) * u.kg/u.m**3 # same as mathcad sheet
+coagGraph = np.arange(1 * 10**-5, 26.1 * 10**-4, 1 * 10**-4) * u.kg/u.m**3 # same as mathcad sheet
 coag_graph = np.linspace(5*10**-5,50*10**-4,num=1000)*u.kg/u.m**3
 coag_graph = coag_graph.to(u.mg/u.L)
 enerDis = 4.514* u.mW/u.kg
@@ -104,8 +103,8 @@ def N_viscous (concClay,concNatOrgMat,concAl,material,natOrgMat,coag,diamTube,ra
     x = floc.alpha(diamTube, concClay, concAl, concNatOrgMat, natOrgMat, coag, material, ratioheightdiameter)*time*(np.sqrt(energyDis/pc.viscosity_kinematic(temp))).to(1/u.s)*floc.frac_vol_floc_initial(concAl, concClay, coag, material)**(2/3)
     return x.to(u.dimensionless)
 
-def viscous_fit(n,k):
-    return 1.5*np.log10(2.0/3.0*np.pi*k*n*(6.0/np.pi)**(2.0/3.0) + 1)
+def viscous_fit(N,k):
+    return 1.5*np.log10(2.0/3.0*np.pi*k*N*(6.0/np.pi)**(2.0/3.0) + 1)
 # # verify correctness
 # pc_viscous(enerDis,temperature,resTime,tubeDiam,100*u.NTU,coag,0*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,kfit,floc.RATIO_HEIGHT_DIAM)
 # n_test = N_viscous(100*u.NTU,coag,floc.PACl,floc.Clay,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
@@ -115,17 +114,17 @@ N_fit50 = N_viscous(50*u.NTU,0*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,
 N_fit100 = N_viscous(100*u.NTU,0*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
 N_graph = N_viscous(50*u.NTU,0*u.mg/u.L,coag_graph,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
 # fit k for 50 NTU 0 mg/l ha data
-kfit, kfitvar= curve_fit(viscous_fit,np.append(N_fit50,N_fit50),np.append(dataset[0][0],dataset2[0]))              
+kfit, kfitvar= curve_fit(viscous_fit,np.append(N_fit50,N_fit50),np.append(dataset[0][0],dataset2[0][0]))              
 ## fit k for combined 0 mg/l ha data
-# kfit, kfitvar= curve_fit(viscous_fit,np.concatenate([n_fit50,N_fit100]),np.concatenate([dataset[0][0],dataset[1][0]]))              
+# kfit, kfitvar= curve_fit(viscous_fit,np.concatenate([N_fit50,N_fit100]),np.concatenate([dataset[0][0],dataset[1][0]]))              
 kfit
 ## verify fit
 N_graph50  = N_viscous(50*u.NTU,0*u.mg/u.L,coag_graph,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
 N_graph100  = N_viscous(100*u.NTU,0*u.mg/u.L,coag_graph,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
 N_plot = np.linspace(2.5,16,num=100)
 
-plt.plot(np.append(n_fit50,n_fit50),np.append(dataset[0][0],dataset2[0]),'x')
-plt.plot(n_graph50,pc_viscous(enerDis,temperature,resTime,tubeDiam,50*u.NTU,coag_graph,0*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,kfit,floc.RATIO_HEIGHT_DIAM),'k')
+plt.plot(np.append(N_fit50,N_fit50),np.append(dataset[0][0],dataset2[0][0]),'x')
+plt.plot(N_graph50,pc_viscous(enerDis,temperature,resTime,tubeDiam,50*u.NTU,coag_graph,0*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,kfit,floc.RATIO_HEIGHT_DIAM),'k')
 plt.show()
 ```
 ## fitting $d_{HA}$
@@ -136,12 +135,9 @@ def SSE(a,b):
     '''function for determining sum-squared-error'''
     return np.sum((a-b)**2)
 
-pC50NTU = np.concatenate((dataset[0],dataset2))
+pC50NTU = np.concatenate((dataset[0],dataset2[0]))
+pC100NTU = np.concatenate((dataset[1],dataset2[1]))
 HArep = np.append(conc_humic_acid,conc_humic_acid)*u.mg/u.L
-pC50NTU
-HArep
-np.shape(pC50NTU)
-np.shape(HArep)
 conv = 0.25 #criterion for pC*
 dHA_range = np.arange(1,201,1)*u.nm
 dHA_50i = np.ones(len(HArep))
@@ -172,8 +168,6 @@ dHA_50i
 # dHA_fiti = np.mean([dHA_50i[2:],dHA_100i[2:]])
 # dHA_fiti
 # dHA_fit = dHA_range[int(np.round(dHA_fiti))]
-dHA_50i[2:6]
-dHA_50i[8:12]
 dHA_fit = dHA_range[int(np.round(np.mean(np.append(dHA_50i[2:6],dHA_50i[8:12]))))]
 floc.HumicAcid.Diameter = dHA_fit.to(u.m).magnitude
 floc.HumicAcid.Diameter
@@ -302,7 +296,7 @@ RMSE50mean
 ```python
 RMSE100 = np.zeros(len(conc_humic_acid))
 for i in range (0,len(conc_humic_acid)):    
-    RMSE100[i] = RMSE(dataset[1][i],pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coag, conc_humic_acid[i], floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM))
+    RMSE100[i] = RMSE(pC100NTU[i],pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coag, conc_humic_acid[i], floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM))
 RMSE100
 RMSE100mean = np.mean(RMSE100)
 RMSE100mean
@@ -334,10 +328,8 @@ line15mg50 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coa
 x = coagGraph.to(u.mg/u.L)
 plt.plot(x, line0mg50, 'r', x, line3mg50, 'b', x, line6mg50, 'g',
          x, line9mg50, 'm', x, line12mg50, 'c', x, line15mg50, 'y')
-```
 
 #Begin graphing the 100NTU datasets
-```python
 plt.subplot(122)
 plt.title('100 NTU Graph')
 plt.ylabel('pC*')
@@ -356,11 +348,9 @@ line15mg100 = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, c
 x = coagGraph.to(u.mg/u.L)
 plt.plot(x, line0mg100, 'r', x, line3mg100, 'b', x, line6mg100, 'g',
          x, line9mg100, 'm', x, line12mg100, 'c', x, line15mg100, 'y')
-```
-
 
 #And now we display our graph!
-```python
+
 #nua = 15*u.mm**2/u.s
 #EDR1 = 1.5*u.m**2/u.s**3
 #EDR2 = 6*u.m**2/u.s**3
@@ -371,7 +361,7 @@ plt.plot(x, line0mg100, 'r', x, line3mg100, 'b', x, line6mg100, 'g',
 plt.savefig('Yingda.png',format='png')
 plt.show()
 ```
-# Okay, but let's make some pu.Lication qu.Lity graphs!
+# Okay, but let's make some publication quality graphs!
 ```python
 plt.rcParams['text.latex.preamble']=[r"\usepackage{txfonts}"]
 params = {'text.usetex' : True,
@@ -379,9 +369,12 @@ params = {'text.usetex' : True,
           'font.family' : 'serif',
           'text.latex.unicode': True,
           'axes.facecolor': 'white',
+          'axes.labelcolor': 'black',
           'savefig.facecolor': 'white',
           'axes.edgecolor': 'black',
-          'savefig.edgecolor': 'black'
+          'savefig.edgecolor': 'black',
+          'xtick.color': 'black',
+          'ytick.color': 'black'
           }
 plt.rcParams.update(params)
 ```
@@ -416,27 +409,28 @@ N_graph_old = N_old(50*u.NTU,coag_graph,floc.PACl,floc.Clay,tubeDiam,floc.RATIO_
 def viscous_fit(N,k):
     return 1.5*np.log10(2.0/3.0*np.pi*k*N*(6.0/np.pi)**(2.0/3.0) + 1)
 
-k_old, kvar_old = curve_fit(viscous_fit,np.append(N_fit_old,N_fit_old),np.append(dataset[0][0],dataset2[0]))              
+k_old, kvar_old = curve_fit(viscous_fit,np.append(N_fit_old,N_fit_old),np.append(dataset[0][0],dataset2[0][0]))              
+
 plt.clf()
 plt.close('all')
 plt.figure(0)
 plt.plot(coag,dataset[0][0],'--rx', label=r'0 mg/L HA')
-plt.plot(coag,dataset2[0],'--rx')
+plt.plot(coag,dataset2[0][0],'--rx')
 plt.plot(coag,dataset[0][1],'--b+', label=r'3 mg/L HA')
-plt.plot(coag,dataset2[1],'--b+')
+plt.plot(coag,dataset2[0][1],'--b+')
 plt.plot(coag,dataset[0][2],'--gs', markerfacecolor='none', label=r'6 mg/L HA')
-plt.plot(coag,dataset2[2],'--gs', markerfacecolor='none')
+plt.plot(coag,dataset2[0][2],'--gs', markerfacecolor='none')
 plt.plot(coag,dataset[0][3],'--mD', markerfacecolor='none', label=r'9 mg/L HA')
-plt.plot(coag,dataset2[3],'--mD', markerfacecolor='none')
+plt.plot(coag,dataset2[0][3],'--mD', markerfacecolor='none')
 plt.plot(coag,dataset[0][4],'--co', markerfacecolor='none', label=r'12 mg/L HA')
-plt.plot(coag,dataset2[4],'--co', markerfacecolor='none')
+plt.plot(coag,dataset2[0][4],'--co', markerfacecolor='none')
 plt.plot(coag,dataset[0][5],'--^',c='xkcd:brown', markerfacecolor='none', label=r'12 mg/L HA')
-plt.plot(coag,dataset2[5],'--^',c='xkcd:brown', markerfacecolor='none')
-plt.plot(coag_graph.to(u.mg/u.L)[19:],viscous_fit(N_graph_old,k_old)[19:],'k',label=r'Pennock et al. (2018)')
+plt.plot(coag,dataset2[0][5],'--^',c='xkcd:brown', markerfacecolor='none')
+plt.plot(coag_graph.to(u.mg/u.L)[90:500],viscous_fit(N_graph_old,k_old)[90:500],'k',label=r'Pennock et al. (2018)')
 #plt.plot(x[4:],pc_viscous_old(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph[4:], floc.PACl, floc.Clay, k50, floc.RATIO_HEIGHT_DIAM),'k',label=r'Pennock et al. (2018)')
 plt.xlabel(r'Coagulant Dose (mg/L)')
 plt.ylabel(r'$\mathrm{p}C^{*}$')
-plt.axis([0, 3, 0, 1.7])
+plt.axis([0.5, 2.6, 0, 1.6])
 plt.legend(loc='upper left',ncol=2,borderpad=0.1,handletextpad=0.1,labelspacing=0,columnspacing=0.1,edgecolor='inherit')
 plt.tight_layout()
 plt.savefig('50NTU.png',format='png')
@@ -450,17 +444,17 @@ plt.clf()
 plt.close('all')
 plt.figure()
 plt.plot(coag,dataset[0][0],'rx', label=r'0 mg/L HA Data')
-plt.plot(coag,dataset2[0],'rx')
+plt.plot(coag,dataset2[0][0],'rx')
 plt.plot(coag,dataset[0][1],'b+', label=r'3 mg/L HA Data')
-plt.plot(coag,dataset2[1],'b+')
+plt.plot(coag,dataset2[0][1],'b+')
 plt.plot(coag,dataset[0][2],'gs', markerfacecolor='none', label=r'6 mg/L HA Data')
-plt.plot(coag,dataset2[2],'gs', markerfacecolor='none')
+plt.plot(coag,dataset2[0][2],'gs', markerfacecolor='none')
 plt.plot(coag,dataset[0][3],'mD', markerfacecolor='none', label=r'9 mg/L HA Data')
-plt.plot(coag,dataset2[3],'mD', markerfacecolor='none')
+plt.plot(coag,dataset2[0][3],'mD', markerfacecolor='none')
 plt.plot(coag,dataset[0][4],'co', markerfacecolor='none', label=r'12 mg/L HA Data')
-plt.plot(coag,dataset2[4],'co', markerfacecolor='none')
+plt.plot(coag,dataset2[0][4],'co', markerfacecolor='none')
 plt.plot(coag,dataset[0][5],'^',c='xkcd:brown', markerfacecolor='none', label=r'12 mg/L HA Data')
-plt.plot(coag,dataset2[5],'^',c='xkcd:brown', markerfacecolor='none')
+plt.plot(coag,dataset2[0][5],'^',c='xkcd:brown', markerfacecolor='none')
 plt.plot(x, line0mg50, 'r', label=r'0 mg/L HA Model')
 plt.plot(x, line3mg50, 'b', label=r'3 mg/L HA Model')
 plt.plot(x, line6mg50, 'g', label=r'6 mg/L HA Model')
@@ -469,7 +463,7 @@ plt.plot(x, line12mg50, 'c', label=r'12 mg/L HA Model')
 plt.plot(x, line15mg50, 'xkcd:brown', label=r'15 mg/L HA Model')
 plt.xlabel(r'Coagulant Dose (mg/L)')
 plt.ylabel(r'$\mathrm{p}C^{*}$')
-plt.axis([0,3,0,1.5])
+plt.axis([0,2.6,0,1.25])
 plt.legend(loc=2,bbox_to_anchor=(0,-0.6,1,0.4),ncol=2,borderpad=0.1,handletextpad=0.2,labelspacing=0,columnspacing=0.2,edgecolor='white')
 #plt.tight_layout()
 
@@ -480,12 +474,7 @@ plt.show()
 ```
 
 ## 100 NTU Fit
-### Extracting data from Yingda's 100 NTU graph
 ```python
-
-```
-```python
-dataset2[1]
 plt.clf()
 plt.close('all')
 plt.figure()
@@ -509,7 +498,7 @@ plt.plot(x, line12mg100, 'c', label=r'12 mg/L HA Model')
 plt.plot(x, line15mg100, 'xkcd:brown', label=r'15 mg/L HA Model')
 plt.xlabel(r'Coagulant Dose (mg/L)')
 plt.ylabel(r'$\mathrm{p}C^{*}$')
-plt.axis([0,3,0,1.5])
+plt.axis([0,2.6,0,1.5])
 plt.legend(loc=2,bbox_to_anchor=(0,-0.6,1,0.37),ncol=2,borderpad=0.1,handletextpad=0.2,labelspacing=0,columnspacing=0.2,edgecolor='white')
 #plt.tight_layout()
 
@@ -522,22 +511,22 @@ plt.show()
 N50 = np.zeros([len(conc_humic_acid),len(coag)])
 for i in range(0,len(N50)):
     N50[i] = N_viscous(50*u.NTU,conc_humic_acid[i],coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
-N50    
+
 plt.clf()
 plt.close('all')
 plt.figure()
 plt.semilogx(N50[0],dataset[0][0],'rx', label=r'0 mg/L HA Data')
-plt.semilogx(N50[0],dataset2[0],'rx')
+plt.semilogx(N50[0],dataset2[0][0],'rx')
 plt.semilogx(N50[1],dataset[0][1],'b+', label=r'3 mg/L HA Data')
-plt.semilogx(N50[1],dataset2[1],'b+')
+plt.semilogx(N50[1],dataset2[0][1],'b+')
 plt.semilogx(N50[2],dataset[0][2],'gs', markerfacecolor='none', label=r'6 mg/L HA Data')
-plt.semilogx(N50[2],dataset2[2],'gs', markerfacecolor='none')
+plt.semilogx(N50[2],dataset2[0][2],'gs', markerfacecolor='none')
 plt.semilogx(N50[3],dataset[0][3],'mD', markerfacecolor='none', label=r'9 mg/L HA Data')
-plt.semilogx(N50[3],dataset2[3],'mD', markerfacecolor='none')
+plt.semilogx(N50[3],dataset2[0][3],'mD', markerfacecolor='none')
 plt.semilogx(N50[4],dataset[0][4],'co', markerfacecolor='none', label=r'12 mg/L HA Data')
-plt.semilogx(N50[4],dataset2[4],'co', markerfacecolor='none')
+plt.semilogx(N50[4],dataset2[0][4],'co', markerfacecolor='none')
 plt.semilogx(N50[5],dataset[0][5],'^',c='xkcd:brown', markerfacecolor='none', label=r'12 mg/L HA Data')
-plt.semilogx(N50[5],dataset2[5],'^',c='xkcd:brown', markerfacecolor='none')
+plt.semilogx(N50[5],dataset2[0][5],'^',c='xkcd:brown', markerfacecolor='none')
 plt.semilogx(N_graph,viscous_fit(N_graph,kfit),'xkcd:navy',label=r'Model')
 plt.xlabel(r'$\alpha\overline{G}\theta\phi^{2/3}$')
 plt.ylabel(r'$\mathrm{p}C^{*}$')
@@ -589,10 +578,10 @@ plt.semilogx(N100[5],dataset2[1][5],'k^', markerfacecolor='none')
 plt.xlabel(r'$\overline{\alpha}\overline{G}\theta\phi^{2/3}$')
 plt.ylabel(r'$\mathrm{p}C^{*}$')
 plt.axis([0.2, 20, 0, 1.7])
-plt.legend(loc=2,bbox_to_anchor=(-0.1,-0.6,1,0.37),ncol=2,borderpad=0.1,handletextpad=0.2,labelspacing=0,columnspacing=0.2,edgecolor='white')
+plt.legend(loc=2,bbox_to_anchor=(-0.125,-0.6,1,0.37),ncol=2,borderpad=0.1,handletextpad=0.2,labelspacing=0,columnspacing=0.2,edgecolor='white')
 plt.tight_layout()
-plt.savefig('Collision100.png',format='png')
-plt.savefig('Collision100.eps',format='eps')
+plt.savefig('Collision100.png',format='png', bbox_inches='tight')
+plt.savefig('Collision100.eps',format='eps', bbox_inches='tight')
 plt.show()
 ```
 ## $\Gamma_\mathrm{HA}$
@@ -621,19 +610,19 @@ plt.clf()
 plt.close('all')
 plt.figure()
 # Red is 0 mg/L
-plt.plot(coag_graph,floc.alpha.PACl_clay(tubeDiam,50*u.NTU,coag_graph,0*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'r:',label=r'$\alpha_\mathrm{PACl-Clay}$ 0 mg/L HA')
-plt.plot(coag_graph,floc.alpha.PACl.PACl(tubeDiam,50*u.NTU,coag_graph,0*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'r-.',label=r'$\alpha_\mathrm{PACl-PACl}$ 0 mg/L HA')
-plt.plot(coag_graph,floc.alpha.PACl_nat_org_mat(tubeDiam,50*u.NTU,coag_graph,0*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'r--',label=r'$\alpha_\mathrm{HA-PACl}$ 0 mg/L HA')
+plt.plot(coag_graph,floc.alpha_pacl_clay(tubeDiam,50*u.NTU,coag_graph,0*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'r:',label=r'$\alpha_\mathrm{PACl-Clay}$ 0 mg/L HA')
+plt.plot(coag_graph,floc.alpha_pacl_pacl(tubeDiam,50*u.NTU,coag_graph,0*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'r-.',label=r'$\alpha_\mathrm{PACl-PACl}$ 0 mg/L HA')
+plt.plot(coag_graph,floc.alpha_pacl_nat_org_mat(tubeDiam,50*u.NTU,coag_graph,0*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'r--',label=r'$\alpha_\mathrm{HA-PACl}$ 0 mg/L HA')
 plt.plot(coag_graph,floc.alpha(tubeDiam,50*u.NTU,coag_graph,0*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'r-',label=r'$\alpha_\mathrm{Total}$ 0 mg/L HA')
 # Magenta is 9 mg/L
-plt.plot(coag_graph,floc.alpha.PACl_clay(tubeDiam,50*u.NTU,coag_graph,9*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'m:',label=r'$\alpha_\mathrm{PACl-Clay}$ 9 mg/L HA')
-plt.plot(coag_graph,floc.alpha.PACl.PACl(tubeDiam,50*u.NTU,coag_graph,9*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'m-.',label=r'$\alpha_\mathrm{PACl-PACl}$ 9 mg/L HA')
-plt.plot(coag_graph,floc.alpha.PACl_nat_org_mat(tubeDiam,50*u.NTU,coag_graph,9*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'m--',label=r'$\alpha_\mathrm{HA-PACl}$ 9 mg/L HA')
+plt.plot(coag_graph,floc.alpha_pacl_clay(tubeDiam,50*u.NTU,coag_graph,9*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'m:',label=r'$\alpha_\mathrm{PACl-Clay}$ 9 mg/L HA')
+plt.plot(coag_graph,floc.alpha_pacl_pacl(tubeDiam,50*u.NTU,coag_graph,9*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'m-.',label=r'$\alpha_\mathrm{PACl-PACl}$ 9 mg/L HA')
+plt.plot(coag_graph,floc.alpha_pacl_nat_org_mat(tubeDiam,50*u.NTU,coag_graph,9*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'m--',label=r'$\alpha_\mathrm{HA-PACl}$ 9 mg/L HA')
 plt.plot(coag_graph,floc.alpha(tubeDiam,50*u.NTU,coag_graph,9*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'m-',label=r'$\alpha_\mathrm{Total}$ 9 mg/L HA')
 # Brown in 15 mg/L
-plt.plot(coag_graph,floc.alpha.PACl_clay(tubeDiam,50*u.NTU,coag_graph,15*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),':',color='xkcd:brown',label=r'$\alpha_\mathrm{PACl-Clay}$ 15 mg/L HA')
-plt.plot(coag_graph,floc.alpha.PACl.PACl(tubeDiam,50*u.NTU,coag_graph,15*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'-.',color='xkcd:brown',label=r'$\alpha_\mathrm{PACl-PACl}$ 15 mg/L HA')
-plt.plot(coag_graph,floc.alpha.PACl_nat_org_mat(tubeDiam,50*u.NTU,coag_graph,15*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'--',color='xkcd:brown',label=r'$\alpha_\mathrm{HA-PACl}$ 15 mg/L HA')
+plt.plot(coag_graph,floc.alpha_pacl_clay(tubeDiam,50*u.NTU,coag_graph,15*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),':',color='xkcd:brown',label=r'$\alpha_\mathrm{PACl-Clay}$ 15 mg/L HA')
+plt.plot(coag_graph,floc.alpha_pacl_pacl(tubeDiam,50*u.NTU,coag_graph,15*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'-.',color='xkcd:brown',label=r'$\alpha_\mathrm{PACl-PACl}$ 15 mg/L HA')
+plt.plot(coag_graph,floc.alpha_pacl_nat_org_mat(tubeDiam,50*u.NTU,coag_graph,15*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'--',color='xkcd:brown',label=r'$\alpha_\mathrm{HA-PACl}$ 15 mg/L HA')
 plt.plot(coag_graph,floc.alpha(tubeDiam,50*u.NTU,coag_graph,15*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'-',color='xkcd:brown',label=r'$\alpha_\mathrm{Total}$ 15 mg/L HA')
 plt.xlabel(r'Coagulant Dose (mg/L)')
 plt.ylabel(r'$\alpha$')
@@ -644,17 +633,22 @@ plt.savefig('alphas.png',format='png',bbox_inches='tight')
 plt.savefig('alphas.eps',format='eps',bbox_inches='tight')
 plt.show()
 ```
-## Performance vs. Effluent concentration
+## Collision Potential vs. Effluent concentration
 ```python
 def CPvy(L,L0):
   CP = (floc.sep_dist_clay(L, floc.Clay)**(2)-floc.sep_dist_clay(L0, floc.Clay)**(2))/(floc.Clay.Diameter*u.m)**2
   return CP
 
-L = np.arange(0.01,100,0.01)*u.NTU
+L = np.arange(0.1,100,0.1)*u.NTU
 
 #  Creating y-axis values for data
 def CPvx(ConcClay,ConcNatOrgMat,ConcAl,material,NatOrgMat,coag,DiamTube,RatioHeightDiameter,Time,EnergyDis,Temp,k):
     return 2*np.pi/3*k*floc.alpha(DiamTube, ConcClay, ConcAl, ConcNatOrgMat, NatOrgMat, coag, material, RatioHeightDiameter)*Time*(np.sqrt(EnergyDis/pc.viscosity_kinematic(Temp))).to(1/u.s)
+
+def Eff(pC,Inf):
+    return Inf*10**(-pC)    
+
+Inf = np.array([50,100])*u.NTU
 
 # 50 NTU values
 N_50_0 = CPvx(50*u.NTU,0*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
@@ -671,4 +665,48 @@ N_100_6 = CPvx(100*u.NTU,6*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tube
 N_100_9 = CPvx(100*u.NTU,9*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
 N_100_12 = CPvx(100*u.NTU,12*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
 N_100_15 = CPvx(100*u.NTU,15*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
+
+# Make plot
+plt.clf()
+plt.close('all')
+plt.figure()
+#50 NTU Model
+plt.loglog(L.to(u.NTU),CPvy(L,50*u.NTU).to(u.dimensionless),label=r'$C_0=$ 50 NTU Model')
+#50 NTU Data
+plt.loglog(Eff(dataset[0][0],Inf[0]),N_50_0,'rx', label=r'50 NTU, 0 mg/L HA Data')
+plt.loglog(Eff(dataset2[0][0],Inf[0]),N_50_0,'rx')
+plt.loglog(Eff(dataset[0][1],Inf[0]),N_50_3,'b+', label=r'50 NTU, 3 mg/L HA Data')
+plt.loglog(Eff(dataset2[0][1],Inf[0]),N_50_3,'b+')
+plt.loglog(Eff(dataset[0][2],Inf[0]),N_50_6,'gs', markerfacecolor='none', label=r'50 NTU, 6 mg/L HA Data')
+plt.loglog(Eff(dataset2[0][2],Inf[0]),N_50_6,'gs', markerfacecolor='none')
+plt.loglog(Eff(dataset[0][3],Inf[0]),N_50_9,'mD', markerfacecolor='none', label=r'50 NTU, 9 mg/L HA Data')
+plt.loglog(Eff(dataset2[0][3],Inf[0]),N_50_9,'mD', markerfacecolor='none')
+plt.loglog(Eff(dataset[0][4],Inf[0]),N_50_12,'co', markerfacecolor='none', label=r'50 NTU, 12 mg/L HA Data')
+plt.loglog(Eff(dataset2[0][4],Inf[0]),N_50_12,'co', markerfacecolor='none')
+plt.loglog(Eff(dataset[0][5],Inf[0]),N_50_15,'^',c='xkcd:brown', markerfacecolor='none', label=r'50 NTU, 15 mg/L HA Data')
+plt.loglog(Eff(dataset2[0][5],Inf[0]),N_50_15,'^',c='xkcd:brown', markerfacecolor='none')
+# 100 NTU Model
+plt.loglog(L.to(u.NTU),CPvy(L,100*u.NTU).to(u.dimensionless),label=r'$C_0=$ 100 NTU Model')
+# 100 NTU Data
+plt.loglog(Eff(dataset[1][0],Inf[1]),N_100_0,'kx', label=r'100 NTU, 0 mg/L HA Data' )
+plt.loglog(Eff(dataset2[1][0],Inf[1]),N_100_0,'kx')
+plt.loglog(Eff(dataset[1][1],Inf[1]),N_100_3, 'k+', label=r'100 NTU, 3 mg/L HA Data')
+plt.loglog(Eff(dataset2[1][1],Inf[1]),N_100_3,'k+')
+plt.loglog(Eff(dataset[1][2],Inf[1]),N_100_6,'ks', markerfacecolor='none', label=r'100 NTU, 6 mg/L HA Data')
+plt.loglog(Eff(dataset2[1][2],Inf[1]),N_100_6,'ks', markerfacecolor='none')
+plt.loglog(Eff(dataset[1][3],Inf[1]),N_100_9,'kD', markerfacecolor='none', label=r'100 NTU, 9 mg/L HA Data')
+plt.loglog(Eff(dataset2[1][3],Inf[1]),N_100_9,'kD', markerfacecolor='none')
+plt.loglog(Eff(dataset[1][4],Inf[1]),N_100_12,'ko', markerfacecolor='none', label=r'100 NTU, 12 mg/L HA Data')
+plt.loglog(Eff(dataset2[1][4],Inf[1]),N_100_12,'ko', markerfacecolor='none')
+plt.loglog(Eff(dataset[1][5],Inf[1]),N_100_15,'k^', markerfacecolor='none', label=r'100 NTU, 15 mg/L HA Data')
+plt.loglog(Eff(dataset2[1][5],Inf[1]),N_100_15,'k^', markerfacecolor='none')
+# Settings
+plt.axis([3E0, 1E2, 1E2, 5E3])
+plt.xlabel(r'Final Concentration (NTU)')
+plt.ylabel(r'$\frac{2}{3}k\pi \overline{\alpha}\overline{G}\theta$')
+plt.legend(loc=2,bbox_to_anchor=(-0.125,-0.6,1,0.37),ncol=2,borderpad=0.1,handletextpad=0.2,labelspacing=0,columnspacing=0.2,edgecolor='white')
+plt.tight_layout()
+plt.savefig('performance.png',format='png',bbox_inches='tight')
+plt.savefig('performance.eps',format='eps',bbox_inches='tight')
+plt.show()
 ```

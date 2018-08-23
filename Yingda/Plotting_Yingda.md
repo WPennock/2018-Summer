@@ -9,8 +9,7 @@ from scipy.optimize import curve_fit
 import pdb
 
 u.define('NTU = 100/68*mg/L')
-floc.PACl.PrecipMolecWeight = 0.823
-floc.PACl.PrecipAluminumMPM = 13
+floc.PACl.Density
 
 #k = 0.23 # had been 0.18
 coag = np.array([0.53, 1.06, 1.59, 2.11, 2.56]) * u.mg/u.L

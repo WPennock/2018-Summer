@@ -9,7 +9,6 @@ from scipy.optimize import curve_fit
 import pdb
 
 u.define('NTU = 100/68*mg/L')
-floc.PACl.Density
 
 #k = 0.23 # had been 0.18
 coag = np.array([0.53, 1.06, 1.59, 2.11, 2.56]) * u.mg/u.L
@@ -586,7 +585,7 @@ plt.savefig('Collision100.png',format='png', bbox_inches='tight')
 plt.savefig('Collision100.eps',format='eps', bbox_inches='tight')
 plt.show()
 ```
-## $\Gamma_\mathrm{HA}$
+## $\overline{\Gamma}_\mathrm{HA}$
 ```python
 plt.clf()
 plt.close('all')
@@ -598,7 +597,7 @@ plt.plot(coag_graph.to(u.mg/u.L),floc.gamma_humic_acid_to_coag(coag_graph,conc_h
 plt.plot(coag_graph.to(u.mg/u.L),floc.gamma_humic_acid_to_coag(coag_graph,conc_humic_acid[4],floc.HumicAcid,floc.PACl),'c',label=r'12 mg/L HA')
 plt.plot(coag_graph.to(u.mg/u.L),floc.gamma_humic_acid_to_coag(coag_graph,conc_humic_acid[5],floc.HumicAcid,floc.PACl),'xkcd:brown',label=r'15 mg/L HA')
 plt.xlabel(r'Coagulant Dose (mg/L)')
-plt.ylabel(r'$\Gamma_\mathrm{HA-PACl}$')
+plt.ylabel(r'$\overline{\Gamma}_\mathrm{HA-PACl}$')
 plt.axis([0, 3, 0, 1])
 plt.legend(loc='upper right',borderpad=0.1,handletextpad=0.1,labelspacing=0,columnspacing=0.1,edgecolor='inherit')
 plt.tight_layout()

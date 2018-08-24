@@ -125,3 +125,20 @@ for i in range(0,len(replicates)):
 replicates = np.transpose(replicates)
 replicates
 ```
+## Calculation of Settler Flow
+```python
+D_S = 2.66*u.cm
+L_S = 1.37*u.m
+alpha_S = 60*u.deg
+V_c = 0.12*u.mm/u.s
+Q_S = np.pi/4*D_S**2*V_c*(L_S/D_S*np.cos(alpha_S)+np.sin(alpha_S))
+Q_S.to(u.mL/u.s)
+L_S.to(u.inch)
+(4.5*u.ft).to(u.inch)
+D_S.to(u.inch)
+
+# What was actual capture velocity if Q_S = 1.5 mL/s?
+Q_Actual = 1.5*u.mL/u.s
+V_c_Actual = Q_Actual*4/np.pi/D_S**2/(L_S/D_S*np.cos(alpha_S)+np.sin(alpha_S))
+V_c_Actual.to(u.mm/u.s)
+```

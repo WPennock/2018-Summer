@@ -140,7 +140,7 @@ pC50NTU = np.concatenate((dataset[0],dataset2[0]))
 pC100NTU = np.concatenate((dataset[1],dataset2[1]))
 HArep = np.append(conc_humic_acid,conc_humic_acid)*u.mg/u.L
 conv = 0.25 #criterion for pC*
-dHA_range = np.arange(1,201,1)*u.nm
+dHA_range = np.arange(1,1001,1)*u.nm
 dHA_50i = np.ones(len(HArep))
 SSE50 = np.zeros([len(HArep),len(dHA_range)])
 for i in range (0,len(HArep)):    
@@ -151,6 +151,31 @@ for i in range (0,len(HArep)):
         SSE50[i][j] = SSE(pCpred[np.where(pC50NTU[i]>conv)],pC50NTU[i][np.where(pC50NTU[i]>conv)])
     dHA_50i[i] = np.argmin(SSE50[i])    
 dHA_50i
+
+# Attempt to fit for all data at once
+dHA_rangeA = np.arange(1,200,1)*u.nm
+SSE50A = np.zeros(len(dHA_rangeA))
+pC50NTUA = np.concatenate([np.concatenate(dataset[0][1:]),np.concatenate(dataset2[0][1:])])
+np.shape(pC50NTUA)
+coagA = np.concatenate([coag,coag,coag,coag,coag,coag,coag,coag,coag,coag])*u.mg/u.L
+np.shape(coagA)
+halfHA = np.zeros(25)
+for i in range(0,len(halfHA)):
+    halfHA[i] = conc_humic_acid[1+np.int(np.floor(i*5/len(halfHA)))].magnitude
+HArepA = np.concatenate([halfHA,halfHA])*u.mg/u.L
+np.shape(HArepA)
+convA = 0.25
+pCpredA = np.zeros([len(dHA_rangeA),len(coagA)])
+np.shape(pCpredA)
+for i in range(0,len(SSE50A)):
+    # pdb.set_trace()
+    floc.HumicAcid.Diameter = dHA_rangeA[i].to(u.m).magnitude
+    for j in range(0,len(coagA)):
+        pCpredA[i][j] = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagA[j], HArepA[j], floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM)
+    SSE50A[i] = SSE(pCpredA[i][np.where(pC50NTUA>convA)],pC50NTUA[np.where(pC50NTUA>convA)])
+
+np.argmin(SSE50A)
+np.shape(SSE50A)
 ```
 #### 100 NTU
 ```python
@@ -169,10 +194,15 @@ dHA_50i
 # dHA_fiti = np.mean([dHA_50i[2:],dHA_100i[2:]])
 # dHA_fiti
 # dHA_fit = dHA_range[int(np.round(dHA_fiti))]
-dHA_fit = dHA_range[int(np.round(np.mean(np.append(dHA_50i[2:6],dHA_50i[8:12]))))]
+
+# Using individual fits
+# dHA_fit = dHA_range[int(np.round(np.mean(np.append(dHA_50i[2:6],dHA_50i[8:12]))))]
+# floc.HumicAcid.Diameter = dHA_fit.to(u.m).magnitude
+
+# Using collective fit
+dHA_fit = dHA_rangeA[np.argmin(SSE50A)]
 floc.HumicAcid.Diameter = dHA_fit.to(u.m).magnitude
 floc.HumicAcid.Diameter
-kfit
 ```
 ### Elegant method (curve_fit)
 ```python
@@ -281,11 +311,12 @@ kfit
 #    dHA_50[i],dHAvar_50[i] = curve_fit(pc_fit_dHA,data,pC,p0=100)
 # dHA_100
 ```
-## Evaluate Goodness of Fit
+## Evaluate Goodness of Fit (By humic acid concentration)
 ### 50 NTU
 ```python
 def RMSE(A,B):
     return np.sqrt(np.mean((A-B)**2))
+
 RMSE50 = np.zeros(len(conc_humic_acid))
 for i in range (0,len(conc_humic_acid)):    
     RMSE50[i] = RMSE(pC50NTU[i],pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coag, HArep[i], floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM))
@@ -301,6 +332,34 @@ for i in range (0,len(conc_humic_acid)):
 RMSE100
 RMSE100mean = np.mean(RMSE100)
 RMSE100mean
+```
+## Evaluate Goodness of Fit (Whole data set)
+### 50 NTU
+```python
+coagAll = np.concatenate([coag,coag,coag,coag,coag,coag,coag,coag,coag,coag,coag,coag])*u.mg/u.L
+np.shape(coagAll)
+halfHAAll = np.zeros(30)
+for i in range(0,len(halfHAAll)):
+    halfHAAll[i] = conc_humic_acid[np.int(np.floor(i*6/len(halfHAAll)))].magnitude
+HArepAll = np.concatenate([halfHAAll,halfHAAll])*u.mg/u.L
+np.shape(HArepAll)
+pC50NTUAll = np.concatenate([np.concatenate(dataset[0]),np.concatenate(dataset2[0])])
+np.shape(pC50NTUAll)
+pC50predAll = np.zeros(len(coagAll))
+for i in range(0,len(coagAll)):
+    pC50predAll[i] = pc_viscous(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagAll[i], HArepAll[i], floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM)
+RMSE50All = RMSE(pC50NTUAll,pC50predAll)
+RMSE50All
+
+```
+### 100 NTU
+```python
+pC100NTUAll = np.concatenate([np.concatenate(dataset[1]),np.concatenate(dataset2[1])])
+pC100predAll = np.zeros(len(coagAll))
+for i in range (0,len(coagAll)):    
+    pC100predAll[i] = pc_viscous(enerDis, temperature, resTime, tubeDiam, 100 * u.NTU, coagAll[i], HArepAll[i], floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM)
+RMSE100All = RMSE(pC100NTUAll,pC100predAll)
+RMSE100All
 ```
 
 #Begin graphing the 50NTU datasets
@@ -470,7 +529,6 @@ plt.legend(loc=2,bbox_to_anchor=(0,-0.6,1,0.4),ncol=2,borderpad=0.1,handletextpa
 
 plt.savefig('50NTUfit.png',format='png', bbox_inches = "tight")
 plt.savefig('50NTUfit.eps',format='eps', bbox_inches = "tight")
-floc.HumicAcid.Diameter
 plt.show()
 ```
 
@@ -580,7 +638,7 @@ plt.xlabel(r'$\overline{\alpha}\overline{G}\theta\phi^{2/3}$')
 plt.ylabel(r'$\mathrm{p}C^{*}$')
 plt.axis([0.2, 20, 0, 1.7])
 plt.legend(loc=2,bbox_to_anchor=(-0.125,-0.6,1,0.37),ncol=2,borderpad=0.1,handletextpad=0.2,labelspacing=0,columnspacing=0.2,edgecolor='white')
-plt.tight_layout()
+# plt.tight_layout()
 plt.savefig('Collision100.png',format='png', bbox_inches='tight')
 plt.savefig('Collision100.eps',format='eps', bbox_inches='tight')
 plt.show()
@@ -629,7 +687,7 @@ plt.xlabel(r'Coagulant Dose (mg/L)')
 plt.ylabel(r'$\alpha$')
 plt.axis([0, 2.7, 0, 0.5])
 plt.legend(loc=2,bbox_to_anchor=(-0.24,-0.6,1.5,0.4),ncol=3,borderpad=0.1,handletextpad=0.2,labelspacing=0,columnspacing=0.2,edgecolor='white')
-plt.tight_layout()
+# plt.tight_layout()
 plt.savefig('alphas.png',format='png',bbox_inches='tight')
 plt.savefig('alphas.eps',format='eps',bbox_inches='tight')
 plt.show()
@@ -705,7 +763,7 @@ plt.axis([3E0, 1E2, 1E2, 5E3])
 plt.xlabel(r'Final Concentration (NTU)')
 plt.ylabel(r'$\frac{2}{3}k\pi \overline{\alpha}\overline{G}\theta$')
 plt.legend(loc=2,bbox_to_anchor=(-0.125,-0.6,1,0.37),ncol=2,borderpad=0.1,handletextpad=0.2,labelspacing=0,columnspacing=0.2,edgecolor='white')
-plt.tight_layout()
+# plt.tight_layout()
 plt.savefig('performance.png',format='png',bbox_inches='tight')
 plt.savefig('performance.eps',format='eps',bbox_inches='tight')
 plt.show()

@@ -142,4 +142,12 @@ m_nano = i*m_Al13 # Mass of nanoglob
 V_nano = np.pi*d**3/6 # Volume of nanoglob
 rho_nano = m_nano/V_nano
 rho_nano.to(u.g/u.cm**3)
+
+# Incorporating water
+V_water = V_nano - i*np.pi*d_0**3/6
+V_water/V_nano
+M_nano = m_nano + V_water*rho_H2O
+Rho_nano = M_nano/V_nano
+Rho_nano.to(u.g/u.cm**3)
+
 ```

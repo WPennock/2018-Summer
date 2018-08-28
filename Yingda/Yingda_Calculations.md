@@ -142,3 +142,26 @@ Q_Actual = 1.5*u.mL/u.s
 V_c_Actual = Q_Actual*4/np.pi/D_S**2/(L_S/D_S*np.cos(alpha_S)+np.sin(alpha_S))
 V_c_Actual.to(u.mm/u.s)
 ```
+## Bad Graph
+```python
+matplotlib.rc('font', family='sans-serif')
+matplotlib.rc('font', serif='Comic Sans MS') 
+matplotlib.rc('text', usetex='false')
+matplotlib.rcParams.update({'font.size': 22})
+a = np.arange(0,25)
+b = a + 5
+c = np.arange(0,25,0.001)
+d = c**2
+
+plt.clf()
+plt.close('all')
+plt.figure()
+plt.plot(a,b,'x',label="Points")
+plt.plot(c,d,'+',label="Equation")
+plt.xlabel("alpha")
+plt.title("Graph 1")
+plt.legend()
+plt.tight_layout()
+plt.savefig('Bad.png',format="png")
+plt.show()
+```

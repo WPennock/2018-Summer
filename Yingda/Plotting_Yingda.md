@@ -768,3 +768,15 @@ plt.savefig('performance.png',format='png',bbox_inches='tight')
 plt.savefig('performance.eps',format='eps',bbox_inches='tight')
 plt.show()
 ```
+## Comparing number of HA macromolecules to number of PACl precipitates
+```python
+N_PACl = floc.num_nanoclusters(coag,floc.PACl)
+N_PACl.to(1/u.cm**3)
+N_HA = conc_humic_acid/(floc.HumicAcid.Density*u.kg/u.m**3*np.pi/6*(75*u.nm)**3)
+N_HA.to(1/u.cm**3)
+RatioHP = np.zeros([len(conc_humic_acid),len(coag)])
+for i in range(0,len(conc_humic_acid)):
+    for j in range(0,len(coag)):
+        RatioHP[i][j] = N_HA[i]/N_PACl[j]
+RatioHP
+```

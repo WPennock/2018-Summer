@@ -8,6 +8,22 @@ from aide_design import floc_model as floc
 from scipy.optimize import curve_fit    
 import pdb
 
+# Plotting settings
+plt.rcParams['text.latex.preamble']=[r"\usepackage{txfonts}"]
+params = {'text.usetex' : True,
+          'font.size' : 14,
+          'font.family' : 'serif',
+          'text.latex.unicode': True,
+          'axes.facecolor': 'white',
+          'axes.labelcolor': 'black',
+          'savefig.facecolor': 'white',
+          'axes.edgecolor': 'black',
+          'savefig.edgecolor': 'black',
+          'xtick.color': 'black',
+          'ytick.color': 'black'
+          }
+plt.rcParams.update(params)
+
 u.define('NTU = 100/68*mg/L')
 
 #k = 0.23 # had been 0.18
@@ -116,6 +132,8 @@ N_fit100 = N_viscous(100*u.NTU,0*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PAC
 N_graph = N_viscous(50*u.NTU,0*u.mg/u.L,coag_graph,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature)
 # fit k for 50 NTU 0 mg/l ha data
 kfit, kfitvar= curve_fit(viscous_fit,np.append(N_fit50,N_fit50),np.append(dataset[0][0],dataset2[0][0]))              
+kfit
+
 ## fit k for combined 0 mg/l ha data
 # kfit, kfitvar= curve_fit(viscous_fit,np.concatenate([N_fit50,N_fit100]),np.concatenate([dataset[0][0],dataset[1][0]]))              
 kfit
@@ -422,22 +440,7 @@ plt.savefig('Yingda.png',format='png')
 plt.show()
 ```
 # Okay, but let's make some publication quality graphs!
-```python
-plt.rcParams['text.latex.preamble']=[r"\usepackage{txfonts}"]
-params = {'text.usetex' : True,
-          'font.size' : 14,
-          'font.family' : 'serif',
-          'text.latex.unicode': True,
-          'axes.facecolor': 'white',
-          'axes.labelcolor': 'black',
-          'savefig.facecolor': 'white',
-          'axes.edgecolor': 'black',
-          'savefig.edgecolor': 'black',
-          'xtick.color': 'black',
-          'ytick.color': 'black'
-          }
-plt.rcParams.update(params)
-```
+
 
 ## 50 NTU Data
 ```python
@@ -708,21 +711,31 @@ def Eff(pC,Inf):
     return Inf*10**(-pC)    
 
 Inf = np.array([50,100])*u.NTU
+
+# fit k for C/C0
+def C_C0_fit(N,k):
+    return (2*np.pi/3*(6/np.pi)**(2/3)*k*N + 1)**(-3/2)
+
+kfit_C_C0, kfitvar_C_C0 = curve_fit(C_C0_fit,np.append(N_fit50,N_fit50),np.append(10**(-dataset[0][0]),10**(-dataset2[0][0])))              
+kfit_C_C0
+plt.plot(np.append(N_fit50,N_fit50),np.append(10**(-dataset[0][0]),10**(-dataset2[0][0])),'x')
+plt.plot(N_graph50,C_C0_fit(N_graph50,kfit_C_C0),'k')
+plt.show()
 # 50 NTU values
-N_50_0 = CPvx(50*u.NTU,0*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
-N_50_3 = CPvx(50*u.NTU,3*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
-N_50_6 = CPvx(50*u.NTU,6*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
-N_50_9 = CPvx(50*u.NTU,9*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
-N_50_12 = CPvx(50*u.NTU,12*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
-N_50_15 = CPvx(50*u.NTU,15*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
+N_50_0 = CPvx(50*u.NTU,0*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit_C_C0)
+N_50_3 = CPvx(50*u.NTU,3*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit_C_C0)
+N_50_6 = CPvx(50*u.NTU,6*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit_C_C0)
+N_50_9 = CPvx(50*u.NTU,9*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit_C_C0)
+N_50_12 = CPvx(50*u.NTU,12*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit_C_C0)
+N_50_15 = CPvx(50*u.NTU,15*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit_C_C0)
 
 # 100 NTU values
-N_100_0 = CPvx(100*u.NTU,0*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
-N_100_3 = CPvx(100*u.NTU,3*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
-N_100_6 = CPvx(100*u.NTU,6*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
-N_100_9 = CPvx(100*u.NTU,9*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
-N_100_12 = CPvx(100*u.NTU,12*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
-N_100_15 = CPvx(100*u.NTU,15*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit)
+N_100_0 = CPvx(100*u.NTU,0*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit_C_C0)
+N_100_3 = CPvx(100*u.NTU,3*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit_C_C0)
+N_100_6 = CPvx(100*u.NTU,6*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit_C_C0)
+N_100_9 = CPvx(100*u.NTU,9*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit_C_C0)
+N_100_12 = CPvx(100*u.NTU,12*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit_C_C0)
+N_100_15 = CPvx(100*u.NTU,15*u.mg/u.L,coag,floc.Clay,floc.HumicAcid,floc.PACl,tubeDiam,floc.RATIO_HEIGHT_DIAM,resTime,enerDis,temperature,kfit_C_C0)
 
 # Make plot
 plt.clf()
@@ -779,4 +792,8 @@ for i in range(0,len(conc_humic_acid)):
     for j in range(0,len(coag)):
         RatioHP[i][j] = N_HA[i]/N_PACl[j]
 RatioHP
+
+# Calculating max RatioHP
+RatioHP_max = np.pi*(90*u.nm)**2/(np.pi/4*(75*u.nm)**2)
+RatioHP_max
 ```

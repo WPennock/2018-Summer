@@ -695,6 +695,27 @@ plt.savefig('alphas.png',format='png',bbox_inches='tight')
 plt.savefig('alphas.eps',format='eps',bbox_inches='tight')
 plt.show()
 ```
+## $\alpha$ vs. Dose (15 mg/L only)
+```python
+plt.clf()
+plt.close('all')
+plt.figure()
+
+# Brown in 15 mg/L
+plt.plot(coag_graph,floc.alpha_pacl_clay(tubeDiam,50*u.NTU,coag_graph,15*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),':',color='r',label=r'$\alpha_\mathrm{PACl-Clay}$ 15 mg/L HA')
+plt.plot(coag_graph,floc.alpha_pacl_pacl(tubeDiam,50*u.NTU,coag_graph,15*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'-.',color='r',label=r'$\alpha_\mathrm{PACl-PACl}$ 15 mg/L HA')
+plt.plot(coag_graph,floc.alpha_pacl_nat_org_mat(tubeDiam,50*u.NTU,coag_graph,15*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'--',color='r',label=r'$\alpha_\mathrm{HA-PACl}$ 15 mg/L HA')
+plt.plot(coag_graph,floc.alpha(tubeDiam,50*u.NTU,coag_graph,15*u.mg/u.L,floc.HumicAcid,floc.PACl,floc.Clay,floc.RATIO_HEIGHT_DIAM),'-',color='r',label=r'$\alpha_\mathrm{Total}$ 15 mg/L HA')
+plt.xlabel(r'Coagulant Dose (mg/L)')
+plt.ylabel(r'$\alpha$')
+plt.axis([0, 2.7, 0, 0.3])
+plt.legend()
+# plt.legend(loc=2,bbox_to_anchor=(-0.24,-0.6,1.5,0.4),ncol=3,borderpad=0.1,handletextpad=0.2,labelspacing=0,columnspacing=0.2,edgecolor='white')
+# plt.tight_layout()
+plt.savefig('alpha15.png',format='png',bbox_inches='tight')
+plt.savefig('alpha15.eps',format='eps',bbox_inches='tight')
+plt.show()
+```
 ## Collision Potential vs. Effluent concentration
 ```python
 def CPvy(L,L0):

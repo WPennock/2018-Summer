@@ -91,7 +91,7 @@ velGrad
 # material properties also the same as in mathcad sheet
 
 
-# trou.Leshooting discrepancy with mathcad
+# troubleshooting discrepancy with mathcad
 # problem was with odd calculation of phi w/in floc_model pc_viscous function.
 @u.wraps(None, [u.W/u.kg, u.degK, u.s, u.m,
                 u.kg/u.m**3, u.kg/u.m**3, u.kg/u.m**3, None,
@@ -817,4 +817,136 @@ RatioHP
 # Calculating max RatioHP
 RatioHP_max = np.pi*(90*u.nm)**2/(np.pi/4*(75*u.nm)**2)
 RatioHP_max
+```
+## Exploring HA stacking
+```python
+@u.wraps(None, [u.kg/u.m**3, u.kg/u.m**3, None, None], False)
+@ut.list_handler
+def gamma_humic_acid_to_coag_Poisson(ConcAl, ConcNatOrgMat, NatOrgMat, coag):
+    x = min(((ConcNatOrgMat / floc.conc_precipitate(ConcAl, coag).magnitude)
+                * (coag.Density / NatOrgMat.Density)
+                * (coag.Diameter / (4 * NatOrgMat.Diameter))
+                ),
+               1)
+    return 1-np.exp(-x)
+
+@u.wraps(None, [u.m, u.kg/u.m**3, u.kg/u.m**3, u.kg/u.m**3,
+                None, None, None, u.dimensionless], False)
+def alpha_pacl_nat_org_mat_Poisson(DiamTube, ConcClay, ConcAl, ConcNatOrgMat,
+                              NatOrgMat, coag, material, RatioHeightDiameter):
+    PAClTerm = floc._pacl_term(DiamTube, ConcClay, ConcAl, ConcNatOrgMat,
+                             NatOrgMat, coag, material, RatioHeightDiameter)
+    return (2 * PAClTerm
+            * floc.gamma_coag(ConcClay, ConcAl, coag, material, DiamTube,
+                            RatioHeightDiameter)
+            * gamma_humic_acid_to_coag_Poisson(ConcAl, ConcNatOrgMat, NatOrgMat, coag))
+
+@u.wraps(None, [u.m, u.kg/u.m**3, u.kg/u.m**3, u.kg/u.m**3,
+                    None, None, None, u.dimensionless], False)
+def alpha_Poisson(DiamTube, ConcClay, ConcAl, ConcNatOrgMat,
+              NatOrgMat, coag, material, RatioHeightDiameter):
+    return (alpha_pacl_nat_org_mat_Poisson(DiamTube, ConcClay, ConcAl, ConcNatOrgMat,
+                                       NatOrgMat, coag, material,
+                                       RatioHeightDiameter)
+                + floc.alpha_pacl_pacl(DiamTube, ConcClay, ConcAl, ConcNatOrgMat,
+                                  NatOrgMat, coag, material, RatioHeightDiameter)
+                + floc.alpha_pacl_clay(DiamTube, ConcClay, ConcAl, ConcNatOrgMat,
+                                  NatOrgMat, coag, material, RatioHeightDiameter)
+                )    
+
+def N_viscous_Poisson (concClay,concNatOrgMat,concAl,material,natOrgMat,coag,diamTube,ratioheightdiameter,time,energyDis,temp):
+    x = floc.alpha_Poisson(diamTube, concClay, concAl, concNatOrgMat, natOrgMat, coag, material, ratioheightdiameter)*time*(np.sqrt(energyDis/pc.viscosity_kinematic(temp))).to(1/u.s)*floc.frac_vol_floc_initial(concAl, concClay, coag, material)**(2/3)
+    return x.to(u.dimensionless)
+
+@u.wraps(None, [u.W/u.kg, u.degK, u.s, u.m,
+                u.kg/u.m**3, u.kg/u.m**3, u.kg/u.m**3, None,
+                None, None, u.dimensionless, u.dimensionless], False)
+def pc_viscous_Poisson(energyDis, temp, time, diamTube,
+               concClay, concAl, concNatOrgMat, natOrgMat,
+               coag, material, fittingParam, ratioheightdiameter):
+    return ((3/2)
+            * np.log10((2/3) * np.pi * fittingParam * time
+                       * (6.0/np.pi)**(2.0/3.0)
+                       * np.sqrt(energyDis
+                                 / (pc.viscosity_kinematic(temp).magnitude)
+                                 )
+                       * alpha_Poisson(diamTube, concClay, concAl, concNatOrgMat,
+                               natOrgMat, coag, material, ratioheightdiameter)
+                       * floc.frac_vol_floc_initial(concAl,concClay,coag,material)**(2/3)
+                       + 1
+                       )
+            )
+# Attempt fitting
+SSE50P = np.zeros(len(dHA_rangeP))
+pCpredP = np.zeros([len(dHA_rangeA),len(coagA)])
+np.shape(pCpredA)
+for i in range(0,len(SSE50P)):
+    # pdb.set_trace()
+    floc.HumicAcid.Diameter = dHA_rangeA[i].to(u.m).magnitude
+    for j in range(0,len(coagA)):
+        pCpredP[i][j] = pc_viscous_Poisson(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagA[j], HArepA[j], floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM)
+    SSE50P[i] = SSE(pCpredP[i][np.where(pC50NTUA>convA)],pC50NTUA[np.where(pC50NTUA>convA)])
+
+dHA_fit_Poisson = dHA_rangeA[np.argmin(SSE50P)]
+floc.HumicAcid.Diameter = dHA_fit_Poisson.to(u.m).magnitude
+floc.HumicAcid.Diameter
+
+pC50predAllP = np.zeros(len(coagAll))
+for i in range(0,len(coagAll)):
+    pC50predAllP[i] = pc_viscous_Poisson(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagAll[i], HArepAll[i], floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM)
+RMSE50AllP = RMSE(pC50NTUAll,pC50predAllP)
+RMSE50AllP
+
+# Plot the results.
+line0mg50P = pc_viscous_Poisson(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 0 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM)
+line3mg50P = pc_viscous_Poisson(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 3 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM)
+line6mg50P = pc_viscous_Poisson(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 6 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM)
+line9mg50P = pc_viscous_Poisson(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 9 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM)
+line12mg50P = pc_viscous_Poisson(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 12 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM)
+line15mg50P = pc_viscous_Poisson(enerDis, temperature, resTime, tubeDiam, 50 * u.NTU, coagGraph, 15 * u.mg/u.L, floc.HumicAcid, floc.PACl, floc.Clay, kfit, floc.RATIO_HEIGHT_DIAM)
+
+def exponent(x):
+    return 14.71*np.exp(0.1645*x)
+
+def polynomial(x):
+    return 25.568*x**2-1125.8*x+12883
+
+exponent(75)    
+polynomial(75)
+
+def polynomial2(y):
+    return -3E-6*y**2+0.0124*y+15.9
+
+def logarithmic(y):
+    return 6.0686*np.log(y)-16.274
+logarithmic(500000)    
+polynomial2(500000)
+
+plt.clf()
+plt.close('all')
+plt.figure()
+plt.plot(coag,dataset[0][0],'rx', label=r'0 mg/L HA Data')
+plt.plot(coag,dataset2[0][0],'rx')
+plt.plot(coag,dataset[0][1],'b+', label=r'3 mg/L HA Data')
+plt.plot(coag,dataset2[0][1],'b+')
+plt.plot(coag,dataset[0][2],'gs', markerfacecolor='none', label=r'6 mg/L HA Data')
+plt.plot(coag,dataset2[0][2],'gs', markerfacecolor='none')
+plt.plot(coag,dataset[0][3],'mD', markerfacecolor='none', label=r'9 mg/L HA Data')
+plt.plot(coag,dataset2[0][3],'mD', markerfacecolor='none')
+plt.plot(coag,dataset[0][4],'co', markerfacecolor='none', label=r'12 mg/L HA Data')
+plt.plot(coag,dataset2[0][4],'co', markerfacecolor='none')
+plt.plot(coag,dataset[0][5],'^',c='xkcd:brown', markerfacecolor='none', label=r'12 mg/L HA Data')
+plt.plot(coag,dataset2[0][5],'^',c='xkcd:brown', markerfacecolor='none')
+plt.plot(x, line0mg50P, 'r', label=r'0 mg/L HA Model')
+plt.plot(x, line3mg50P, 'b', label=r'3 mg/L HA Model')
+plt.plot(x, line6mg50P, 'g', label=r'6 mg/L HA Model')
+plt.plot(x, line9mg50P, 'm', label=r'9 mg/L HA Model')
+plt.plot(x, line12mg50P, 'c', label=r'12 mg/L HA Model')
+plt.plot(x, line15mg50P, 'xkcd:brown', label=r'15 mg/L HA Model')
+plt.xlabel(r'Coagulant Dose (mg/L)')
+plt.ylabel(r'$\mathrm{p}C^{*}$')
+plt.axis([0,2.6,0,1.25])
+plt.legend(loc=2,bbox_to_anchor=(0,-0.6,1,0.4),ncol=2,borderpad=0.1,handletextpad=0.2,labelspacing=0,columnspacing=0.2,edgecolor='white')
+plt.savefig('Poisson.png',format='png',bbox_inches='tight')
+plt.show()
 ```

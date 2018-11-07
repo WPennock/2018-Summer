@@ -77,7 +77,7 @@ dataset2 = np.array([[[ 0.60414962, 0.78887946, 0.93107239, 1.07058107, 1.188424
                       ])
 
 
-coagGraph = np.arange(1 * 10**-5, 26.1 * 10**-4, 1 * 10**-4) * u.kg/u.m**3 # same as mathcad sheet
+coagGraph = np.arange(1 * 10**-5, 26.1 * 10**-4, 1 * 10**-5) * u.kg/u.m**3 # same as mathcad sheet
 coag_graph = np.linspace(5*10**-5,50*10**-4,num=1000)*u.kg/u.m**3
 coag_graph = coag_graph.to(u.mg/u.L)
 enerDis = 4.514* u.mW/u.kg
